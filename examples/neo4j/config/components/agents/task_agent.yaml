@@ -1,0 +1,16 @@
+# Task Agent Component Configuration
+
+component:
+  id: "task_agent"
+  class: "app.components.agents.task_agent.TaskAgent"
+
+default_config:
+  llm_provider: "ollama"
+  llm_model: "llama3.2:3b"
+  max_iterations: 5
+  reflection_enabled: true
+  allowed_tasks:
+    - "data_analysis"
+    - "query_generation"
+    - "text_summarization"
+    - "information_extraction" 

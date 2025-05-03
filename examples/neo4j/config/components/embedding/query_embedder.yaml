@@ -1,0 +1,11 @@
+# Query Embedder Component Configuration
+
+component:
+  id: "query_embedder"
+  class: "app.components.embedding.query_embedder.QueryEmbedder"
+
+default_config:
+  embedding_provider: "local_huggingface"
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  include_history: false
+  history_weight: 0.3 

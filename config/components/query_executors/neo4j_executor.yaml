@@ -1,0 +1,32 @@
+# Neo4j Query Executor Component Configuration
+
+component_id: "neo4j_executor"
+component_type: "query_executors"
+description: "Executes Cypher queries against Neo4j database"
+class: "app.components.query_executors.neo4j_executor.Neo4jExecutor"
+
+# Default configuration for the component
+default_config:
+  # Service dependency
+  service_name: "neo4j_service"
+  
+  # Query execution settings
+  query_timeout: 60  # Seconds
+  max_records: 1000  # Maximum number of records to return
+  
+  # Output formatting
+  return_format: "json"  # Options: json, records, graph
+  include_metadata: true
+  
+  # Advanced query options
+  use_transaction: true
+  read_only: false
+  
+  # Parameter handling
+  validate_parameters: true
+  allow_literals: false  # Whether to allow literal parameters in queries
+  
+  # Error handling
+  retry_on_transient_errors: true
+  max_retries: 3
+  retry_delay_ms: 1000 

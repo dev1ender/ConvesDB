@@ -1,0 +1,11 @@
+# Document Embedder Component Configuration
+
+component:
+  id: "document_embedder"
+  class: "app.components.embedding.document_embedder.DocumentEmbedder"
+
+default_config:
+  embedding_provider: "local_huggingface"
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  batch_size: 16
+  max_tokens: 8192 

@@ -1,0 +1,101 @@
+# Local Llama3 workflow configuration
+
+workflow:
+  id: "llama_workflow"
+  description: "Workflow using Ollama Llama 3.2 model for processing natural language queries"
+  
+  # Initial context to be passed to workflow stages
+  initial_context:
+    db_path: "example.sqlite"
+  
+  # Workflow stages
+  stages:
+    - id: "schema_generation"
+      component_type: "schema_generators"
+      component_id: "sqlite_schema"
+      error_policy: "fail"
+      config:
+        include_system_tables: false
+    
+    - id: "document_embedding"
+      component_type: "embedding"
+      component_id: "document_embedder"
+      error_policy: "continue"
+      config:
+        embedding_provider: "local_huggingface"
+        embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+        batch_size: 8
+    
+    - id: "query_embedding"
+      component_type: "embedding"
+      component_id: "query_embedder"
+      error_policy: "continue"
+      config:
+        embedding_provider: "local_huggingface"
+        embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    
+    - id: "vector_search"
+      component_type: "search"
+      component_id: "vector_search"
+      error_policy: "continue"
+      config:
+        similarity_threshold: 0.3
+        max_results: 5
+    
+    - id: "prompt_generation"
+      component_type: "prompt_generators"
+      component_id: "context_aware_prompt"
+      error_policy: "fail"
+      config:
+        system_template: |
+          You are a SQL expert that analyzes database schemas and generates precise SQL queries.
+          
+          Database Schema:
+          {schema}
+          
+          Your job is to write a valid SQL query that answers the user's question. The query should:
+          1. Use only tables and columns that exist in the schema
+          2. Include proper joins if multiple tables are needed
+          3. Use appropriate WHERE clauses to filter data
+          4. Handle aggregations correctly if required (COUNT, SUM, AVG, etc.)
+          5. Only generate the SQL query, nothing else
+          
+          User question: {query}
+          
+          SQL Query:
+        use_examples: true
+    
+    - id: "query_generation"
+      component_type: "agents"
+      component_id: "task_agent"
+      error_policy: "fail"
+      config:
+        llm_provider: "ollama"
+        llm_model: "llama3.2:3b"
+        task_type: "query_generation"
+        task_description: "Generate a SQL query for the given question"
+        max_iterations: 3
+    
+    - id: "query_verification"
+      component_type: "query_verifiers"
+      component_id: "syntax_verifier"
+      error_policy: "continue"
+      config:
+        strict_mode: true
+    
+    - id: "query_execution"
+      component_type: "query_executors"
+      component_id: "sqlite_executor"
+      error_policy: "fail"
+      config:
+        read_only: true
+        timeout_seconds: 15
+    
+    - id: "response_formatting"
+      component_type: "response_formatters"
+      component_id: "json_formatter"
+      error_policy: "continue"
+      config:
+        include_metadata: true
+        pretty_print: true
+        include_query: true 

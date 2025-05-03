@@ -1,0 +1,98 @@
+# Neo4j Workflow Configuration
+
+description: "Process natural language queries using Neo4j"
+version: "1.0"
+
+# Workflow definition
+workflow:
+  id: "neo4j_workflow"
+  input:
+    - name: "query"
+      description: "Natural language query to process"
+      required: true
+  
+  output:
+    - name: "results"
+      description: "Query execution results"
+    - name: "cypher_query"
+      description: "Generated Cypher query"
+    - name: "execution_time"
+      description: "Query execution time in milliseconds"
+  
+  # Define workflow stages
+  stages:
+    - id: "schema_generation"
+      component_type: "schema_generators"
+      component_id: "neo4j_schema"
+      description: "Generate schema from Neo4j database"
+      input:
+        service_name: "neo4j_service"
+      output:
+        - "schema"
+    
+    - id: "prompt_generation"
+      component_type: "prompt_generators"
+      component_id: "context_aware_prompt"
+      description: "Generate context-aware prompts for the LLM"
+      input:
+        query: "$.query"
+        schema: "$.schema"
+        format: "cypher"
+      output:
+        - "prompt"
+    
+    - id: "query_generation"
+      component_type: "agents"
+      component_id: "task_agent"
+      description: "Generate Cypher query from natural language"
+      input:
+        prompt: "$.prompt"
+        task: "translate_to_cypher"
+      output:
+        - "cypher_query"
+    
+    - id: "query_verification"
+      component_type: "query_verifiers"
+      component_id: "syntax_verifier"
+      description: "Verify Cypher query syntax"
+      input:
+        query: "$.cypher_query"
+        query_type: "cypher"
+      output:
+        - "verified_query"
+        - "is_valid"
+    
+    - id: "query_execution"
+      component_type: "query_executors"
+      component_id: "neo4j_executor"
+      description: "Execute Cypher query against Neo4j"
+      input:
+        query: "$.verified_query"
+        service_name: "neo4j_service"
+      output:
+        - "results"
+        - "execution_time"
+    
+    - id: "response_formatting"
+      component_type: "response_formatters"
+      component_id: "json_formatter"
+      description: "Format query results as JSON"
+      input:
+        results: "$.results"
+        query: "$.query"
+        cypher_query: "$.verified_query"
+        execution_time: "$.execution_time"
+      output:
+        - "formatted_response"
+  
+  # Define error handling
+  error_handling:
+    default_action: "stop"  # Options: continue, retry, stop
+    max_retries: 3
+    retry_delay_seconds: 1
+  
+  # Define conditional flows
+  conditional_flows:
+    - condition: "$.is_valid == false"
+      action: "stop"
+      error_message: "Invalid Cypher query syntax" 

@@ -1,5 +1,7 @@
 """
-Database module for the RAG-POC application.
+Database access module.
 """
 
-from app.database.sqlite_connector import SQLiteConnector 
+from app.database.neo4j_connector import Neo4jConnector
+
+__all__ = ['Neo4jConnector'] 

@@ -1,5 +1,12 @@
 """
-Database interfaces for the RAG-POC application.
+Copyright (c) 2024 dev1ender
+
+This file is part of conversDB.
+
+This source code is licensed under the MIT license found in the
+LICENSE file in the root directory of this source tree.
+
+Database interfaces for the conversDB application.
 """
 
 from abc import ABC, abstractmethod
@@ -12,11 +19,6 @@ class DatabaseConnector(ABC):
     @abstractmethod
     def connect(self) -> None:
         """Connect to the database."""
-        pass
-    
-    @abstractmethod
-    def seed_database(self, script_path: Optional[str] = None) -> None:
-        """Seed the database with sample data."""
         pass
     
     @abstractmethod
@@ -37,4 +39,14 @@ class DatabaseConnector(ABC):
     @abstractmethod
     def close(self) -> None:
         """Close the database connection."""
+        pass
+    
+    @abstractmethod
+    def get_view_names(self) -> List[str]:
+        """Get all view names from the database."""
+        pass
+    
+    @abstractmethod
+    def is_connected(self) -> bool:
+        """Check if the database connection is active."""
         pass 

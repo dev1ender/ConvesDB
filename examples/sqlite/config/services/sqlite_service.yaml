@@ -1,0 +1,25 @@
+# SQLite service configuration
+
+# Service class path
+class: "app.services.sqlite_service.SQLiteService"
+
+# Service configuration
+config:
+  db_path: "example.sqlite"
+  read_only: false
+  cache_schema: true
+  
+  # Default workflow for this service
+  default_workflow: "sqlite_default"
+  
+  # Query execution settings
+  query_execution:
+    timeout_seconds: 30
+    max_rows: 1000
+    memory_limit_mb: 100
+  
+  # Schema extraction settings
+  schema_extraction:
+    include_system_tables: false
+    include_views: true
+    cache_ttl_seconds: 3600 

@@ -1,0 +1,59 @@
+service:
+  name: "postgresql"
+  class: "app.services.postgresql_service.PostgreSQLService"
+  enabled: true
+  description: "PostgreSQL database service for natural language queries"
+  
+  # PostgreSQL connection settings
+  config:
+    host: "${POSTGRES_HOST:localhost}"
+    port: "${POSTGRES_PORT:5432}"
+    database: "${POSTGRES_DB:ragpoc}"
+    user: "${POSTGRES_USER:postgres}"
+    password: "${POSTGRES_PASSWORD:postgres}"
+    schema: "public"
+    
+    # Component configurations
+    components:
+      schema_generators:
+        postgresql_schema:
+          include_system_tables: false
+          include_views: true
+      
+      prompt_generators:
+        context_aware_prompt:
+          include_search_results: true
+          include_examples: true
+          max_schema_tables: 20
+      
+      query_executors:
+        postgresql_executor:
+          read_only: true
+          max_rows: 1000
+          timeout_seconds: 30
+      
+      response_formatters:
+        json_formatter:
+          include_metadata: true
+          pretty_print: true
+    
+    # Workflow configurations  
+    workflows:
+      default:
+        id: "postgresql_default"
+        stages:
+          - id: "schema_generation"
+            component_type: "schema_generators"
+            component_id: "postgresql_schema"
+          - id: "document_search"
+            component_type: "search"
+            component_id: "vector_search"
+          - id: "prompt_generation"
+            component_type: "prompt_generators"
+            component_id: "context_aware_prompt"
+          - id: "query_execution"
+            component_type: "query_executors"
+            component_id: "postgresql_executor"
+          - id: "response_formatting"
+            component_type: "response_formatters"
+            component_id: "json_formatter" 

@@ -1,0 +1,48 @@
+# Neo4j Service Configuration
+
+name: "neo4j_service"
+description: "Service for connecting to Neo4j graph database"
+enabled: true
+class: "app.services.neo4j_service.Neo4jService"
+
+# Connection settings
+config:
+  # Enable the service
+  enabled: true
+  
+  # Neo4j database settings
+  database:
+    uri: "bolt://localhost:7687"  # Using the standard Neo4j Bolt protocol
+    username: "neo4j"            # Default Neo4j username
+    password: "password"         # Default Neo4j password
+    database: "neo4j"            # Database name
+  
+  # Document store settings
+  document_store:
+    document_label: "Document"
+    vector_index_name: "document_embeddings"
+    embedding_dimension: 384  # Match the global embedding dimensions
+  
+  # Schema embedder settings
+  schema_embedder:
+    schema_cache_ttl: 3600  # Cache schema for 1 hour
+    include_relationships: true
+    include_properties: true
+    batch_size: 16
+  
+  # Query settings
+  query_timeout: 60            # Seconds for query execution timeout
+  
+  # Error handling
+  retry_on_failure: true       # Whether to retry failed connections
+  max_retry_attempts: 3        # Maximum number of retry attempts
+  retry_delay_ms: 1000         # Milliseconds to wait between retries
+
+# Advanced settings
+advanced:
+  encryption: true             # Use TLS encryption for the connection
+  trust_strategy: "TRUST_ALL_CERTIFICATES"  # Certificate validation strategy
+  connection_acquisition_timeout: 60  # Max time to wait when acquiring a connection from the pool
+  routing_context:             # Optional routing context for Neo4j clusters
+    region: "us-west"
+  database: "neo4j"            # Name of the database to connect to (Neo4j 4.0+) 

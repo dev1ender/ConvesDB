@@ -2,108 +2,135 @@
 Factory for creating the main application and its components.
 """
 
-from typing import Dict, Any, Optional
+import logging
 import os
+from typing import Dict, Any, Optional, List
 
-from app.interfaces.app import NLToSQLAppInterface
-from app.interfaces.database import DatabaseConnector
-from app.interfaces.config import ConfigManagerInterface
-from app.logging_setup import setup_logging, get_logger, setup_logging_from_config
+from app.application import Application
+from app.core.exceptions import InitializationError
 
-from app.config import ConfigManager
-from app.database import SQLiteConnector
-from app.agents import SchemaAgent, PromptAgent, QueryGenerator, QueryExecutor
-from app.llm.factory import LLMFactory
-from app.application import NLToSQLApp
-
-# Setup logger
-logger = get_logger(__name__)
 
 class ApplicationFactory:
-    """Factory for creating the main application and its components."""
+    """
+    Factory for creating the main application and its components.
+    
+    This class provides static methods for creating and configuring
+    the application and its components.
+    """
     
     @staticmethod
-    def create_app(config_path: str = "config.yml", db_path: Optional[str] = None,
-                  use_openai: Optional[bool] = None) -> NLToSQLAppInterface:
-        """Create the NLToSQL application with all of its components.
+    def create_app(config_dir: Optional[str] = None, 
+                  verify_config: bool = True, 
+                  verify_components: bool = True, 
+                  verify_services: bool = True, 
+                  run_health_checks: bool = True) -> Application:
+        """
+        Create the main application with all of its components.
         
         Args:
-            config_path: Path to configuration file
-            db_path: Database path (overrides configuration)
-            use_openai: Whether to use OpenAI (overrides configuration)
+            config_dir: Directory containing configuration files
+            verify_config: Whether to verify configuration is loaded properly
+            verify_components: Whether to verify components exist
+            verify_services: Whether to verify service requirements
+            run_health_checks: Whether to run health checks on services
             
         Returns:
-            NLToSQLApp instance
+            Application: The initialized application
+            
+        Raises:
+            InitializationError: If application initialization fails
         """
-        # Create configuration manager
-        logger.info(f"Creating application with config path: {config_path}")
-        config_manager = ConfigManager(config_path)
+        logger = logging.getLogger("app.factory")
         
-        # Set up logging based on config
-        setup_logging_from_config(config_manager.config)
+        # Use environment variable for config dir if not provided
+        if not config_dir:
+            config_dir = os.environ.get("CONFIG_DIR", "config")
+            
+        logger.info(f"Creating application with config directory: {config_dir}")
         
-        # Create database connector
-        db_connector = ApplicationFactory._create_db_connector(config_manager, db_path)
-        
-        # Create application
-        app = NLToSQLApp(config_manager, db_connector, use_openai)
-        
-        return app
+        try:
+            # Convert legacy parameters to init_options dict
+            init_options = {
+                "verify_config": verify_config,
+                "verify_components": verify_components,
+                "verify_services": verify_services,
+                "run_health_checks": run_health_checks
+            }
+            
+            # Create and return the application with specified options
+            app = Application(
+                config_dir=config_dir,
+                init_options=init_options
+            )
+            
+            logger.info("Application created successfully")
+            return app
+            
+        except Exception as e:
+            logger.error(f"Failed to create application: {str(e)}")
+            raise InitializationError(f"Failed to create application: {str(e)}")
     
     @staticmethod
-    def _create_db_connector(config_manager: ConfigManagerInterface, 
-                            db_path: Optional[str] = None) -> DatabaseConnector:
-        """Create database connector based on configuration.
+    def configure_logging(log_level: str = "INFO", log_file: Optional[str] = None) -> None:
+        """
+        Configure application logging.
         
         Args:
-            config_manager: Configuration manager instance
-            db_path: Database path (overrides configuration)
+            log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            log_file: Path to log file or None for console logging
+        """
+        logger = logging.getLogger("app")
+        
+        # Configure log level
+        numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+        logger.setLevel(numeric_level)
+        
+        # Create formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        
+        # Configure console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        
+        # Configure file handler if log file is provided
+        if log_file:
+            # Create log directory if it doesn't exist
+            log_dir = os.path.dirname(log_file)
+            if log_dir and not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+                
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+    
+    @staticmethod
+    def get_available_components(app: Application) -> Dict[str, List[str]]:
+        """
+        Get all available components in the application.
+        
+        Args:
+            app: Application instance
             
         Returns:
-            Database connector instance
+            Dict[str, List[str]]: Dictionary mapping component types to lists of component IDs
         """
-        # Get database path from parameter or configuration
-        db_path = db_path or config_manager.get("database.path", "example.sqlite")
+        return {
+            component_type: app.component_registry.get_components_by_type(component_type)
+            for component_type in app.component_registry.get_component_types()
+        }
+    
+    @staticmethod
+    def get_available_workflows(app: Application) -> List[str]:
+        """
+        Get all available workflow IDs.
         
-        # Get database type from configuration
-        db_type = config_manager.get("database.type", "sqlite").lower()
-        logger.debug(f"Creating database connector for type: {db_type}")
-        
-        if db_type == "sqlite":
-            logger.info(f"Creating SQLite connector with path: {db_path}")
-            return SQLiteConnector(db_path)
+        Args:
+            app: Application instance
             
-        elif db_type in ["postgres", "postgresql"]:
-            # Import PostgreSQL connector
-            try:
-                from extensions.database_connectors import PostgreSQLConnector
-                connection_string = config_manager.get("database.connection_string", "")
-                
-                # Log sanitized connection string (without password)
-                sanitized_conn = connection_string.replace(
-                    connection_string.split(":", 2)[2].split("@")[0], "***"
-                ) if "@" in connection_string else connection_string
-                
-                logger.info(f"Creating PostgreSQL connector with connection: {sanitized_conn}")
-                return PostgreSQLConnector(connection_string)
-                
-            except ImportError:
-                logger.warning("PostgreSQL connector not found. Falling back to SQLite.")
-                return SQLiteConnector(db_path)
-                
-        else:
-            # Try to dynamically import a custom database connector
-            try:
-                from extensions.database_connectors import get_connector_class
-                logger.info(f"Attempting to load custom database connector: {db_type}")
-                
-                connector_class = get_connector_class(db_type)
-                
-                # Get configuration for this connector
-                config = config_manager.get("database", {})
-                logger.info(f"Initializing custom database connector: {db_type}")
-                return connector_class(**config)
-                
-            except (ImportError, ValueError):
-                logger.warning(f"Unsupported database type: {db_type}. Falling back to SQLite.")
-                return SQLiteConnector(db_path) 
+        Returns:
+            List[str]: List of available workflow IDs
+        """
+        return app.workflow_engine.list_workflows() 

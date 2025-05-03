@@ -1,0 +1,17 @@
+component:
+  id: "json_formatter"
+  class: "app.components.response_formatters.json_formatter.JSONFormatter"
+  description: "Formats query results and other data as JSON"
+  
+  default_config:
+    # Whether to include metadata in the response
+    include_metadata: true
+    
+    # Whether to format the JSON with indentation for better readability
+    pretty_print: true
+    
+    # Whether to include debug information in the response
+    include_debug: false
+    
+    # Maximum number of result items to include
+    max_result_items: 100 

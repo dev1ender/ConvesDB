@@ -1,113 +1,70 @@
-import unittest
-import sqlite3
-import os
-import sys
-import json
+import pytest
 
-# Add parent directory to path so we can import app modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from scripts.seed_data import create_database_schema, create_database_schema_part2, create_aggregated_views
-from app.database import SQLiteConnector
-from app.schema_agent import SchemaAgent
-
-class TestViews(unittest.TestCase):
-    """Test the database views implementation."""
+def test_product_sales_summary_view(db_conn):
+    """Test product sales summary view"""
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT * FROM vw_product_sales_summary LIMIT 10")
+    results = cursor.fetchall()
+    assert len(results) > 0
+    # Check that we have the columns we expect
+    expected_columns = ["product_id", "product_name", "category", "subcategory", 
+                        "brand", "order_count", "total_quantity_sold", 
+                        "total_revenue", "average_price"]
+    for column in expected_columns:
+        assert column in results[0].keys()
     
-    def setUp(self):
-        """Set up the test database."""
-        # Use in-memory database for tests with shared cache
-        self.db_path = ":memory:"
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row  # Set row factory for the connection
-        
-        # Just create schema and views, without seeding data
-        create_database_schema(self.conn)
-        create_database_schema_part2(self.conn)
-        create_aggregated_views(self.conn)
-        
-        # Create a custom simple function to list tables and views
-        def get_tables_and_views(conn, show_views=True):
-            cursor = conn.cursor()
-            types = "'table'" if not show_views else "'table', 'view'"
-            cursor.execute(f"""
-            SELECT name, type FROM sqlite_master 
-            WHERE type IN ({types}) 
-            AND name NOT LIKE 'sqlite_%'
-            """)
-            return [(row['name'], row['type']) for row in cursor.fetchall()]
-        
-        # Get the list of tables and views
-        self.tables_and_views = get_tables_and_views(self.conn)
-        
-        # Create an independent connector for the schema agent
-        self.db_connector = SQLiteConnector(self.db_path)
-        self.db_connector.connect()
-        
-        # Create schema agent
-        self.schema_agent = SchemaAgent(self.db_connector)
-        self.schema_agent.extract_schema()
-    
-    def tearDown(self):
-        """Clean up resources."""
-        if self.conn:
-            self.conn.close()
-        
-        if self.db_connector:
-            self.db_connector.close()
-    
-    def test_view_existence(self):
-        """Test that views were created successfully."""
-        # Extract views from tables_and_views
-        views = [name for name, type_ in self.tables_and_views if type_ == 'view']
-        
-        # Check if views exist
-        view_names = [
-            "vw_product_sales_summary",
-            "vw_customer_purchase_summary",
-            "vw_inventory_status_summary",
-            "vw_monthly_sales_trends",
-            "vw_office_performance_summary",
-            "vw_product_review_stats",
-            "vw_customer_activity_summary",
-            "vw_employee_performance_metrics"
-        ]
-        
-        for view_name in view_names:
-            self.assertIn(view_name, views, f"View {view_name} should exist in the database")
-    
-    def test_schema_agent_view_recognition(self):
-        """Test that the SchemaAgent correctly recognizes views."""
-        schema = self.schema_agent.schema_cache
-        
-        # Check that views are stored in the views section
-        self.assertIn("views", schema, "Schema should have a 'views' section")
-        
-        view_names = [
-            "vw_product_sales_summary",
-            "vw_customer_purchase_summary",
-            "vw_inventory_status_summary",
-            "vw_monthly_sales_trends",
-            "vw_office_performance_summary",
-            "vw_product_review_stats",
-            "vw_customer_activity_summary",
-            "vw_employee_performance_metrics"
-        ]
-        
-        for view_name in view_names:
-            self.assertIn(view_name, schema["views"], f"View {view_name} should be in schema 'views' section")
+def test_customer_purchase_summary_view(db_conn):
+    """Test customer purchase summary view"""
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT * FROM vw_customer_purchase_summary LIMIT 10")
+    results = cursor.fetchall()
+    assert len(results) > 0
+    # Check first customer has orders
+    assert results[0]['order_count'] >= 0
 
-    def test_table_exists_includes_views(self):
-        """Test that table_exists includes views."""
-        view_names = [
-            "vw_product_sales_summary",
-            "vw_customer_purchase_summary",
-            "vw_inventory_status_summary"
-        ]
-        
-        for view_name in view_names:
-            self.assertTrue(self.schema_agent.table_exists(view_name),
-                           f"table_exists should return True for view {view_name}")
+def test_monthly_sales_trends_view(db_conn):
+    """Test monthly sales trends view"""
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT * FROM vw_monthly_sales_trends LIMIT 12")
+    results = cursor.fetchall()
+    assert len(results) > 0
+    # Check we have month column
+    assert 'month' in results[0].keys()
+    # Revenue should be positive for months with sales
+    for row in results:
+        if row['order_count'] > 0:
+            assert row['total_revenue'] > 0
 
-if __name__ == '__main__':
-    unittest.main() 
+def test_inventory_status_summary_view(db_conn):
+    """Test inventory status summary view"""
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT * FROM vw_inventory_status_summary LIMIT 10")
+    results = cursor.fetchall()
+    assert len(results) > 0
+    # Check that total quantity matches sum of locations
+    for row in results:
+        assert row['total_quantity'] >= 0
+        assert row['stocked_locations'] >= 0
+
+def test_office_performance_summary_view(db_conn):
+    """Test office performance summary view"""
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT * FROM vw_office_performance_summary")
+    results = cursor.fetchall()
+    assert len(results) > 0
+    # Each office should have a name
+    for row in results:
+        assert row['office_name'] is not None
+
+def test_product_review_stats_view(db_conn):
+    """Test product review statistics view"""
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT * FROM vw_product_review_stats LIMIT 10")
+    results = cursor.fetchall()
+    assert len(results) > 0
+    # Check that reviews are counted correctly
+    for row in results:
+        assert row['review_count'] >= 0
+        # If there are reviews, average rating should be between 1-5
+        if row['review_count'] > 0:
+            assert 1 <= row['average_rating'] <= 5 

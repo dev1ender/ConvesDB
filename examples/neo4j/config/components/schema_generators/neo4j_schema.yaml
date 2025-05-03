@@ -1,0 +1,32 @@
+# Neo4j Schema Generator Component Configuration
+
+component_id: "neo4j_schema"
+component_type: "schema_generators"
+description: "Generates schema information from Neo4j database"
+class: "app.components.schema_generators.neo4j_schema.Neo4jSchemaGenerator"
+
+# Default configuration for the component
+default_config:
+  # Service dependency
+  service_name: "neo4j_service"
+  
+  # Schema generation settings
+  include_relationships: true
+  include_indexes: true
+  include_constraints: true
+  
+  # Caching configuration
+  schema_cache_enabled: true
+  schema_cache_ttl: 3600  # Time in seconds (1 hour)
+  
+  # Query template for schema extraction
+  schema_query: |
+    CALL apoc.meta.schema()
+  
+  # Formatting options
+  format_for_llm: true
+  relationship_format: "RELATIONSHIP: (:LabelA)-[:RELATIONSHIP_TYPE]->(:LabelB)"
+  
+  # Performance options
+  parallel_execution: false
+  timeout_seconds: 60 

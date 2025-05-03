@@ -1,0 +1,105 @@
+# Main configuration file for the application
+
+# Application settings
+app:
+  name: "NLP Query Engine"
+  version: "1.0.0"
+  log_level: "INFO"
+
+# Logging configuration
+logging:
+  level: "info"          # debug, info, warning, error, critical
+  console_output: true   # Whether to output logs to console
+  file_output: true      # Whether to output logs to file
+  log_dir: "logs"        # Directory for log files
+  file_name_pattern: "app_%Y%m%d.log"  # Log file name pattern with date format
+  format: "%(asctime)s [%(levelname)s] %(name)s - %(message)s"  # Log format
+  date_format: "%Y-%m-%d %H:%M:%S"     # Date format in logs
+  max_file_size_mb: 10   # Max size of log file before rotation (in MB)
+  max_files: 5           # Number of rotated log files to keep
+
+# Services to enable
+enabled_services:
+  - sqlite_service
+  - neo4j_service
+
+# Default workflow to use
+default_workflow: "neo4j_workflow"
+
+# Health check configuration
+health_checks:
+  timeout_seconds: 30
+  required_checks:
+    - sqlite_connectivity
+    - neo4j_connectivity
+
+# Startup sequence
+startup:
+  load_config: true
+  verify_components: true
+  verify_services: true
+  run_health_checks: true
+
+# Global component settings
+components:
+  embedding:
+    default_model: "sentence-transformers/all-MiniLM-L6-v2"
+    default_provider: "local_huggingface"
+    dimensions: 384
+    batch_size: 16
+  
+  llm:
+    default_provider: "local_huggingface"
+    default_model: "meta-llama/Llama-3.2-3B"
+    temperature: 0.2
+    max_tokens: 1000
+    timeout_seconds: 60
+    retry_attempts: 3
+
+# Pipeline stages configuration
+pipeline_stages:
+  - id: "schema_generation"
+    description: "Generate schema from data source"
+    
+  - id: "prompt_generation"
+    description: "Generate LLM prompts"
+    
+  - id: "query_verification"
+    description: "Verify query validity"
+    
+  - id: "query_execution"
+    description: "Execute verified queries"
+    
+  - id: "response_formatting"
+    description: "Format the final response"
+
+# Component registry - maps component IDs to their implementations
+component_registry:
+  prompt_generators:
+    simple_prompt: "app.components.prompt_generators.simple_prompt.SimplePromptGenerator"
+    context_aware_prompt: "app.components.prompt_generators.context_aware_prompt.ContextAwarePromptGenerator"
+  
+  schema_generators:
+    sqlite_schema: "app.components.schema_generators.sqlite_schema.SQLiteSchemaGenerator"
+    neo4j_schema: "app.components.schema_generators.neo4j_schema.Neo4jSchemaGenerator"
+  
+  query_executors:
+    sqlite_executor: "app.components.query_executors.sqlite_executor.SQLiteExecutor"
+    neo4j_executor: "app.components.query_executors.neo4j_executor.Neo4jExecutor"
+  
+  embedding:
+    document_embedder: "app.components.embedding.document_embedder.DocumentEmbedder"
+    query_embedder: "app.components.embedding.query_embedder.QueryEmbedder"
+  
+  search:
+    vector_search: "app.components.search.vector_search.VectorSearch"
+  
+  agents:
+    task_agent: "app.components.agents.task_agent.TaskAgent"
+  
+  query_verifiers:
+    syntax_verifier: "app.components.query_verifiers.syntax_verifier.SyntaxVerifier"
+  
+  response_formatters:
+    json_formatter: "app.components.response_formatters.json_formatter.JSONFormatter"
+    text_formatter: "app.components.response_formatters.text_formatter.TextFormatter" 

@@ -1,0 +1,27 @@
+workflow:
+  description: Test workflow for unit tests
+  id: test_workflow
+  stages:
+  - component_id: test_component_1
+    component_type: test_component
+    id: stage_1
+  - component_id: test_component_2
+    component_type: test_component
+    id: stage_2
+  - component_id: test_component_3
+    component_type: test_component
+    disabled: true
+    id: stage_3
+  - condition:
+      key: test_condition
+      type: value_check
+      value: true
+    else:
+      component_id: test_component_5
+      component_type: test_component
+      id: condition_false
+    id: conditional_stage
+    then:
+      component_id: test_component_4
+      component_type: test_component
+      id: condition_true

@@ -1,5 +1,12 @@
 """
-Configuration interfaces for the RAG-POC application.
+Copyright (c) 2024 dev1ender
+
+This file is part of conversDB.
+
+This source code is licensed under the MIT license found in the
+LICENSE file in the root directory of this source tree.
+
+Configuration interfaces for the conversDB application.
 """
 
 from abc import ABC, abstractmethod
@@ -27,6 +34,11 @@ class ConfigManagerInterface(ABC):
     @abstractmethod
     def get_schema_agent_config(self) -> Dict[str, Any]:
         """Get schema agent configuration."""
+        pass
+    
+    @abstractmethod
+    def get_document_store_config(self) -> Dict[str, Any]:
+        """Get document store configuration."""
         pass
     
     @abstractmethod
